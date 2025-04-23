@@ -1,0 +1,598 @@
+# POSTMAN API TESTING DOCUMENTATION
+
+## Overview
+This document provides instructions for testing the Barberian API using Postman. It includes collection setup, environment configuration, and test examples for key endpoints.
+
+## Postman Collection Setup
+
+### Import Collection
+1. Open Postman
+2. Click "Import" button
+3. Select "Link" tab
+4. Enter collection URL: `https://api.postman.com/collections/barberian-api`
+5. Click "Import"
+
+### Environment Setup
+1. Click "Environments" in the sidebar
+2. Click "+" to create a new environment
+3. Name it "Barberian API - Development"
+4. Add the following variables:
+
+| Variable       | Initial Value                   | Current Value                   |
+|----------------|--------------------------------|--------------------------------|
+| base_url       | http://localhost:8001          | http://localhost:8001          |
+| access_token   |                                |                                |
+| refresh_token  |                                |                                |
+
+5. Click "Save"
+6. Create another environment named "Barberian API - Production"
+7. Add the same variables with production values:
+
+| Variable       | Initial Value                        | Current Value                        |
+|----------------|-------------------------------------|-------------------------------------|
+| base_url       | https://api.barberianspa.com        | https://api.barberianspa.com        |
+| access_token   |                                     |                                     |
+| refresh_token  |                                     |                                     |
+
+8. Click "Save"
+
+## Authentication
+
+### Register User
+**Request:**
+- Method: POST
+- URL: {{base_url}}/api/v1/auth/register/
+- Headers:
+  - Content-Type: application/json
+- Body:
+```json
+{
+  "email": "test@example.com",
+  "password": "securepassword123",
+  "first_name": "Test",
+  "last_name": "User",
+  "phone_number": "+1234567890",
+  "role": "client"
+}
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "test@example.com",
+    "first_name": "Test",
+    "last_name": "User",
+    "phone_number": "+1234567890",
+    "role": "client"
+  },
+  "tokens": {
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
+
+**Test Script:**
+```javascript
+// Save tokens to environment variables
+var jsonData = pm.response.json();
+pm.environment.set("access_token", jsonData.tokens.access);
+pm.environment.set("refresh_token", jsonData.tokens.refresh);
+
+// Test response
+pm.test("Status code is 201", function () {
+    pm.response.to.have.status(201);
+});
+
+pm.test("User created successfully", function () {
+    pm.expect(jsonData.user).to.have.property("id");
+    pm.expect(jsonData.user.email).to.eql("test@example.com");
+});
+```
+
+### Login
+**Request:**
+- Method: POST
+- URL: {{base_url}}/api/v1/auth/login/
+- Headers:
+  - Content-Type: application/json
+- Body:
+```json
+{
+  "email": "test@example.com",
+  "password": "securepassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "test@example.com",
+    "first_name": "Test",
+    "last_name": "User",
+    "role": "client"
+  },
+  "tokens": {
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
+
+**Test Script:**
+```javascript
+// Save tokens to environment variables
+var jsonData = pm.response.json();
+pm.environment.set("access_token", jsonData.tokens.access);
+pm.environment.set("refresh_token", jsonData.tokens.refresh);
+
+// Test response
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Login successful", function () {
+    pm.expect(jsonData.tokens).to.have.property("access");
+    pm.expect(jsonData.tokens).to.have.property("refresh");
+});
+```
+
+### Refresh Token
+**Request:**
+- Method: POST
+- URL: {{base_url}}/api/v1/auth/token/refresh/
+- Headers:
+  - Content-Type: application/json
+- Body:
+```json
+{
+  "refresh": "{{refresh_token}}"
+}
+```
+
+**Response:**
+```json
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**Test Script:**
+```javascript
+// Save new access token
+var jsonData = pm.response.json();
+pm.environment.set("access_token", jsonData.access);
+
+// Test response
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Token refreshed successfully", function () {
+    pm.expect(jsonData).to.have.property("access");
+});
+```
+
+## Categories
+
+### List Categories
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/categories/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Haircuts",
+      "description": "All types of haircuts",
+      "image": "http://localhost:8001/media/categories/haircuts.jpg",
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "Shaving",
+      "description": "Beard trimming and shaving",
+      "image": "http://localhost:8001/media/categories/shaving.jpg",
+      "is_active": true
+    }
+  ]
+}
+```
+
+**Test Script:**
+```javascript
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Categories are returned", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property("results");
+    pm.expect(jsonData.results).to.be.an("array");
+});
+```
+
+### Create Category (Admin only)
+**Request:**
+- Method: POST
+- URL: {{base_url}}/api/v1/categories/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+  - Content-Type: application/json
+- Body:
+```json
+{
+  "name": "Facial",
+  "description": "Facial treatments",
+  "is_active": true
+}
+```
+
+**Response:**
+```json
+{
+  "id": 3,
+  "name": "Facial",
+  "description": "Facial treatments",
+  "image": null,
+  "is_active": true
+}
+```
+
+## Services
+
+### List Services
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/services/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+{
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Regular Haircut",
+      "description": "Standard haircut with scissors",
+      "price": "25.00",
+      "duration": 30,
+      "category": 1,
+      "category_details": {
+        "id": 1,
+        "name": "Haircuts"
+      },
+      "image": "http://localhost:8001/media/services/regular_haircut.jpg",
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "Beard Trim",
+      "description": "Beard trimming and shaping",
+      "price": "15.00",
+      "duration": 20,
+      "category": 2,
+      "category_details": {
+        "id": 2,
+        "name": "Shaving"
+      },
+      "image": "http://localhost:8001/media/services/beard_trim.jpg",
+      "is_active": true
+    }
+  ]
+}
+```
+
+### Filter Services by Category
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/services/?category=1
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Regular Haircut",
+      "description": "Standard haircut with scissors",
+      "price": "25.00",
+      "duration": 30,
+      "category": 1,
+      "category_details": {
+        "id": 1,
+        "name": "Haircuts"
+      },
+      "image": "http://localhost:8001/media/services/regular_haircut.jpg",
+      "is_active": true
+    }
+  ]
+}
+```
+
+## Appointments
+
+### List Appointments (Client)
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/client/appointments/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "service": 1,
+      "service_details": {
+        "id": 1,
+        "name": "Regular Haircut",
+        "price": "25.00",
+        "duration": 30
+      },
+      "staff": 2,
+      "staff_details": {
+        "id": 2,
+        "first_name": "John",
+        "last_name": "Barber"
+      },
+      "date": "2023-04-15",
+      "start_time": "14:00:00",
+      "end_time": "14:30:00",
+      "status": "scheduled",
+      "notes": ""
+    }
+  ]
+}
+```
+
+### Create Appointment
+**Request:**
+- Method: POST
+- URL: {{base_url}}/api/v1/client/appointments/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+  - Content-Type: application/json
+- Body:
+```json
+{
+  "service": 1,
+  "staff": 2,
+  "date": "2023-04-20",
+  "start_time": "15:00:00",
+  "notes": "First time client"
+}
+```
+
+**Response:**
+```json
+{
+  "id": 2,
+  "service": 1,
+  "service_details": {
+    "id": 1,
+    "name": "Regular Haircut",
+    "price": "25.00",
+    "duration": 30
+  },
+  "staff": 2,
+  "staff_details": {
+    "id": 2,
+    "first_name": "John",
+    "last_name": "Barber"
+  },
+  "date": "2023-04-20",
+  "start_time": "15:00:00",
+  "end_time": "15:30:00",
+  "status": "scheduled",
+  "notes": "First time client"
+}
+```
+
+## Staff
+
+### List Staff
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/staff/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 2,
+      "first_name": "John",
+      "last_name": "Barber",
+      "email": "john@barberianspa.com",
+      "phone_number": "+1234567891",
+      "profile": {
+        "bio": "Expert in classic cuts",
+        "specialties": ["Haircuts", "Beard Trimming"],
+        "image": "http://localhost:8001/media/staff/john.jpg"
+      }
+    },
+    {
+      "id": 3,
+      "first_name": "Mike",
+      "last_name": "Stylist",
+      "email": "mike@barberianspa.com",
+      "phone_number": "+1234567892",
+      "profile": {
+        "bio": "Specializes in modern styles",
+        "specialties": ["Modern Cuts", "Styling"],
+        "image": "http://localhost:8001/media/staff/mike.jpg"
+      }
+    }
+  ]
+}
+```
+
+### Get Staff Availability
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/staff/2/availability/?date=2023-04-20
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+{
+  "staff_id": 2,
+  "date": "2023-04-20",
+  "available_slots": [
+    {
+      "start_time": "09:00:00",
+      "end_time": "09:30:00"
+    },
+    {
+      "start_time": "09:30:00",
+      "end_time": "10:00:00"
+    },
+    {
+      "start_time": "10:00:00",
+      "end_time": "10:30:00"
+    }
+  ]
+}
+```
+
+## Business Hours
+
+### Get Business Hours
+**Request:**
+- Method: GET
+- URL: {{base_url}}/api/v1/business-hours/
+- Headers:
+  - Authorization: Bearer {{access_token}}
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "day_of_week": 0,
+    "day_name": "Monday",
+    "is_open": true,
+    "opening_time": "09:00:00",
+    "closing_time": "18:00:00"
+  },
+  {
+    "id": 2,
+    "day_of_week": 1,
+    "day_name": "Tuesday",
+    "is_open": true,
+    "opening_time": "09:00:00",
+    "closing_time": "18:00:00"
+  },
+  {
+    "id": 3,
+    "day_of_week": 2,
+    "day_name": "Wednesday",
+    "is_open": true,
+    "opening_time": "09:00:00",
+    "closing_time": "18:00:00"
+  },
+  {
+    "id": 4,
+    "day_of_week": 3,
+    "day_name": "Thursday",
+    "is_open": true,
+    "opening_time": "09:00:00",
+    "closing_time": "18:00:00"
+  },
+  {
+    "id": 5,
+    "day_of_week": 4,
+    "day_name": "Friday",
+    "is_open": true,
+    "opening_time": "09:00:00",
+    "closing_time": "18:00:00"
+  },
+  {
+    "id": 6,
+    "day_of_week": 5,
+    "day_name": "Saturday",
+    "is_open": true,
+    "opening_time": "10:00:00",
+    "closing_time": "16:00:00"
+  },
+  {
+    "id": 7,
+    "day_of_week": 6,
+    "day_name": "Sunday",
+    "is_open": false,
+    "opening_time": null,
+    "closing_time": null
+  }
+]
+```
+
+## Automated Testing
+
+### Collection Runner
+1. Open the Barberian API collection
+2. Click "Run" button
+3. Select the requests to run
+4. Choose the environment
+5. Click "Run Barberian API"
+
+### Newman CLI
+Run the collection from command line:
+```bash
+newman run Barberian_API.postman_collection.json -e Barberian_API_Development.postman_environment.json
+```
+
+### Test Reports
+Generate HTML reports:
+```bash
+newman run Barberian_API.postman_collection.json -e Barberian_API_Development.postman_environment.json -r htmlextra
+```
+
+## Troubleshooting
+
+### Authentication Issues
+- Check if tokens are properly set in environment variables
+- Verify token expiration
+- Try refreshing the token
+
+### Request Failures
+- Check request URL and parameters
+- Verify request headers
+- Examine response status code and body
+
+### Environment Issues
+- Ensure the correct environment is selected
+- Verify base_url is correctly set
+- Check if all required variables are defined

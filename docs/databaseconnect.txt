@@ -1,0 +1,205 @@
+# DATABASE CONNECTION GUIDE (MySQL)
+
+## Database Overview
+The Barberian application uses MySQL as its database management system. This document provides information on how to set up and connect to the MySQL database for the Barberian application.
+
+## Database Configuration
+
+### MySQL Server Requirements
+- MySQL version: 8.0 or higher
+- Character set: UTF-8
+- Collation: utf8mb4_unicode_ci
+
+### Database Creation
+```sql
+CREATE DATABASE barberian CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'barberian_user'@'%' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON barberian.* TO 'barberian_user'@'%';
+FLUSH PRIVILEGES;
+```
+
+### Database Schema
+The database consists of the following main tables:
+
+1. **users**
+   - Stores user information for clients, staff, and administrators
+   - Contains authentication and profile data
+
+2. **categories**
+   - Stores service categories
+   - Used for organizing services
+
+3. **services**
+   - Stores service information
+   - Linked to categories
+
+4. **staff**
+   - Stores staff information
+   - Linked to users table
+
+5. **business_hours**
+   - Stores business operating hours
+   - Used for appointment availability
+
+6. **appointments**
+   - Stores appointment information
+   - Links clients, staff, and services
+
+7. **notifications**
+   - Stores notification templates and logs
+   - Used for client and staff communications
+
+## Connection Configuration
+
+### Django Settings (MySQL)
+Update the `settings.py` file with the following MySQL configuration:
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'barberian',
+        'USER': 'barberian_user',
+        'PASSWORD': 'your_secure_password',
+        'HOST': 'localhost',  # or your MySQL server address
+        'PORT': '3306',       # default MySQL port
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+    }
+}
+```
+
+### Required Python Packages
+Add the following to your `requirements.txt` file:
+```
+mysqlclient==2.2.0
+```
+
+### Connection Testing
+To test the database connection, run:
+```python
+python manage.py check
+python manage.py dbshell
+```
+
+## Database Migration
+
+### Initial Migration
+To create the initial database schema:
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### Data Seeding
+To seed the database with initial data:
+```bash
+python manage.py loaddata initial_data.json
+```
+
+## Backup and Restore
+
+### Database Backup
+```bash
+mysqldump -u barberian_user -p barberian > barberian_backup.sql
+```
+
+### Database Restore
+```bash
+mysql -u barberian_user -p barberian < barberian_backup.sql
+```
+
+## Connection Pooling
+For production environments, configure connection pooling:
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'barberian',
+        'USER': 'barberian_user',
+        'PASSWORD': 'your_secure_password',
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        'CONN_MAX_AGE': 600,  # 10 minutes
+    }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+1. **Connection Refused**
+   - Check if MySQL server is running
+   - Verify host and port settings
+   - Check firewall settings
+
+2. **Authentication Failed**
+   - Verify username and password
+   - Check user privileges
+
+3. **Database Not Found**
+   - Verify database name
+   - Check if database exists
+
+4. **Character Set Issues**
+   - Ensure proper character set configuration
+   - Check collation settings
+
+### Logging
+Enable database logging for troubleshooting:
+
+```python
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+```
+
+## Migration from PostgreSQL to MySQL
+If migrating from PostgreSQL to MySQL:
+
+1. **Export PostgreSQL Data**
+   ```bash
+   python manage.py dumpdata > data.json
+   ```
+
+2. **Configure MySQL Connection**
+   - Update settings.py with MySQL configuration
+
+3. **Create Schema in MySQL**
+   ```bash
+   python manage.py migrate
+   ```
+
+4. **Import Data to MySQL**
+   ```bash
+   python manage.py loaddata data.json
+   ```
+
+5. **Verify Data Integrity**
+   - Check for any data conversion issues
+   - Verify foreign key relationships

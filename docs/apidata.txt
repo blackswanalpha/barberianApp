@@ -1,0 +1,867 @@
+# API DOCUMENTATION
+
+## API Overview
+The Barberian API is a RESTful API built with Django REST Framework. It provides endpoints for managing barbershop operations, including authentication, appointments, services, staff, and client management.
+
+## Base URL
+- Development: `http://localhost:8001/api/v1/`
+- Production: `https://api.barberianspa.com/api/v1/`
+
+## Authentication
+The API uses JWT (JSON Web Token) authentication.
+
+### Endpoints
+
+#### Register
+- **URL**: `/auth/register/`
+- **Method**: POST
+- **Description**: Register a new user
+- **Request Body**:
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "securepassword",
+    "first_name": "John",
+    "last_name": "Doe",
+    "phone_number": "+1234567890",
+    "role": "client"  // Options: "client", "staff", "admin"
+  }
+  ```
+- **Response**: 201 Created
+  ```json
+  {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "first_name": "John",
+      "last_name": "Doe",
+      "phone_number": "+1234567890",
+      "role": "client"
+    },
+    "tokens": {
+      "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+    }
+  }
+  ```
+
+#### Login
+- **URL**: `/auth/login/`
+- **Method**: POST
+- **Description**: Authenticate a user and get tokens
+- **Request Body**:
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "securepassword"
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "first_name": "John",
+      "last_name": "Doe",
+      "role": "client"
+    },
+    "tokens": {
+      "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+    }
+  }
+  ```
+
+#### Refresh Token
+- **URL**: `/auth/token/refresh/`
+- **Method**: POST
+- **Description**: Refresh access token
+- **Request Body**:
+  ```json
+  {
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  }
+  ```
+
+#### Password Reset Request
+- **URL**: `/auth/password-reset/`
+- **Method**: POST
+- **Description**: Request password reset
+- **Request Body**:
+  ```json
+  {
+    "email": "user@example.com"
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "message": "Password reset email sent"
+  }
+  ```
+
+#### Password Reset Confirm
+- **URL**: `/auth/password-reset/confirm/`
+- **Method**: POST
+- **Description**: Confirm password reset
+- **Request Body**:
+  ```json
+  {
+    "token": "reset-token",
+    "password": "new-password"
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "message": "Password reset successful"
+  }
+  ```
+
+## Categories
+
+#### List Categories
+- **URL**: `/categories/`
+- **Method**: GET
+- **Description**: Get all service categories
+- **Authentication**: Optional
+- **Query Parameters**:
+  - `page`: Page number for pagination
+  - `page_size`: Number of items per page
+  - `is_active`: Filter by active status (true/false)
+- **Response**: 200 OK
+  ```json
+  {
+    "count": 3,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "id": 1,
+        "name": "Haircuts",
+        "description": "All types of haircuts",
+        "image": "http://api.barberianspa.com/media/categories/haircuts.jpg",
+        "is_active": true
+      },
+      {
+        "id": 2,
+        "name": "Shaving",
+        "description": "Beard trimming and shaving",
+        "image": "http://api.barberianspa.com/media/categories/shaving.jpg",
+        "is_active": true
+      },
+      {
+        "id": 3,
+        "name": "Facial",
+        "description": "Facial treatments",
+        "image": null,
+        "is_active": true
+      }
+    ]
+  }
+  ```
+
+#### Get Category
+- **URL**: `/categories/{id}/`
+- **Method**: GET
+- **Description**: Get a specific category
+- **Authentication**: Optional
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 1,
+    "name": "Haircuts",
+    "description": "All types of haircuts",
+    "image": "http://api.barberianspa.com/media/categories/haircuts.jpg",
+    "is_active": true,
+    "services": [
+      {
+        "id": 1,
+        "name": "Regular Haircut",
+        "price": "25.00",
+        "duration": 30
+      },
+      {
+        "id": 2,
+        "name": "Fade Haircut",
+        "price": "30.00",
+        "duration": 45
+      }
+    ]
+  }
+  ```
+
+#### Create Category
+- **URL**: `/categories/`
+- **Method**: POST
+- **Description**: Create a new category
+- **Authentication**: Required (Admin only)
+- **Request Body**:
+  ```json
+  {
+    "name": "Massage",
+    "description": "Relaxing massages",
+    "is_active": true
+  }
+  ```
+- **Response**: 201 Created
+  ```json
+  {
+    "id": 4,
+    "name": "Massage",
+    "description": "Relaxing massages",
+    "image": null,
+    "is_active": true
+  }
+  ```
+
+#### Update Category
+- **URL**: `/categories/{id}/`
+- **Method**: PUT/PATCH
+- **Description**: Update a category
+- **Authentication**: Required (Admin only)
+- **Request Body** (PATCH):
+  ```json
+  {
+    "description": "Updated description"
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 4,
+    "name": "Massage",
+    "description": "Updated description",
+    "image": null,
+    "is_active": true
+  }
+  ```
+
+#### Delete Category
+- **URL**: `/categories/{id}/`
+- **Method**: DELETE
+- **Description**: Delete a category
+- **Authentication**: Required (Admin only)
+- **Response**: 204 No Content
+
+## Services
+
+#### List Services
+- **URL**: `/services/`
+- **Method**: GET
+- **Description**: Get all services
+- **Authentication**: Optional
+- **Query Parameters**:
+  - `page`: Page number for pagination
+  - `page_size`: Number of items per page
+  - `category`: Filter by category ID
+  - `is_active`: Filter by active status (true/false)
+  - `min_price`: Filter by minimum price
+  - `max_price`: Filter by maximum price
+- **Response**: 200 OK
+  ```json
+  {
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "id": 1,
+        "name": "Regular Haircut",
+        "description": "Standard haircut with scissors",
+        "price": "25.00",
+        "duration": 30,
+        "category": 1,
+        "category_details": {
+          "id": 1,
+          "name": "Haircuts"
+        },
+        "image": "http://api.barberianspa.com/media/services/regular_haircut.jpg",
+        "is_active": true
+      },
+      {
+        "id": 2,
+        "name": "Beard Trim",
+        "description": "Beard trimming and shaping",
+        "price": "15.00",
+        "duration": 20,
+        "category": 2,
+        "category_details": {
+          "id": 2,
+          "name": "Shaving"
+        },
+        "image": "http://api.barberianspa.com/media/services/beard_trim.jpg",
+        "is_active": true
+      }
+    ]
+  }
+  ```
+
+#### Get Service
+- **URL**: `/services/{id}/`
+- **Method**: GET
+- **Description**: Get a specific service
+- **Authentication**: Optional
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 1,
+    "name": "Regular Haircut",
+    "description": "Standard haircut with scissors",
+    "price": "25.00",
+    "duration": 30,
+    "category": 1,
+    "category_details": {
+      "id": 1,
+      "name": "Haircuts"
+    },
+    "image": "http://api.barberianspa.com/media/services/regular_haircut.jpg",
+    "is_active": true
+  }
+  ```
+
+#### Create Service
+- **URL**: `/services/`
+- **Method**: POST
+- **Description**: Create a new service
+- **Authentication**: Required (Admin only)
+- **Request Body**:
+  ```json
+  {
+    "name": "Hot Towel Shave",
+    "description": "Traditional hot towel shave",
+    "price": "35.00",
+    "duration": 45,
+    "category": 2,
+    "is_active": true
+  }
+  ```
+- **Response**: 201 Created
+  ```json
+  {
+    "id": 3,
+    "name": "Hot Towel Shave",
+    "description": "Traditional hot towel shave",
+    "price": "35.00",
+    "duration": 45,
+    "category": 2,
+    "category_details": {
+      "id": 2,
+      "name": "Shaving"
+    },
+    "image": null,
+    "is_active": true
+  }
+  ```
+
+## Staff
+
+#### List Staff
+- **URL**: `/staff/`
+- **Method**: GET
+- **Description**: Get all staff members
+- **Authentication**: Optional
+- **Query Parameters**:
+  - `page`: Page number for pagination
+  - `page_size`: Number of items per page
+- **Response**: 200 OK
+  ```json
+  {
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "id": 2,
+        "first_name": "John",
+        "last_name": "Barber",
+        "email": "john@barberianspa.com",
+        "phone_number": "+1234567891",
+        "profile": {
+          "bio": "Expert in classic cuts",
+          "specialties": ["Haircuts", "Beard Trimming"],
+          "image": "http://api.barberianspa.com/media/staff/john.jpg"
+        }
+      },
+      {
+        "id": 3,
+        "first_name": "Mike",
+        "last_name": "Stylist",
+        "email": "mike@barberianspa.com",
+        "phone_number": "+1234567892",
+        "profile": {
+          "bio": "Specializes in modern styles",
+          "specialties": ["Modern Cuts", "Styling"],
+          "image": "http://api.barberianspa.com/media/staff/mike.jpg"
+        }
+      }
+    ]
+  }
+  ```
+
+#### Get Staff
+- **URL**: `/staff/{id}/`
+- **Method**: GET
+- **Description**: Get a specific staff member
+- **Authentication**: Optional
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 2,
+    "first_name": "John",
+    "last_name": "Barber",
+    "email": "john@barberianspa.com",
+    "phone_number": "+1234567891",
+    "profile": {
+      "bio": "Expert in classic cuts",
+      "specialties": ["Haircuts", "Beard Trimming"],
+      "image": "http://api.barberianspa.com/media/staff/john.jpg"
+    }
+  }
+  ```
+
+#### Get Staff Availability
+- **URL**: `/staff/{id}/availability/`
+- **Method**: GET
+- **Description**: Get staff availability for a specific date
+- **Authentication**: Required
+- **Query Parameters**:
+  - `date`: Date in YYYY-MM-DD format
+- **Response**: 200 OK
+  ```json
+  {
+    "staff_id": 2,
+    "date": "2023-04-20",
+    "available_slots": [
+      {
+        "start_time": "09:00:00",
+        "end_time": "09:30:00"
+      },
+      {
+        "start_time": "09:30:00",
+        "end_time": "10:00:00"
+      },
+      {
+        "start_time": "10:00:00",
+        "end_time": "10:30:00"
+      }
+    ]
+  }
+  ```
+
+## Appointments
+
+### Client Appointments
+
+#### List Client Appointments
+- **URL**: `/client/appointments/`
+- **Method**: GET
+- **Description**: Get all appointments for the authenticated client
+- **Authentication**: Required (Client)
+- **Query Parameters**:
+  - `page`: Page number for pagination
+  - `page_size`: Number of items per page
+  - `status`: Filter by status (scheduled, completed, cancelled, no_show)
+  - `date_from`: Filter by start date (YYYY-MM-DD)
+  - `date_to`: Filter by end date (YYYY-MM-DD)
+- **Response**: 200 OK
+  ```json
+  {
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "id": 1,
+        "service": 1,
+        "service_details": {
+          "id": 1,
+          "name": "Regular Haircut",
+          "price": "25.00",
+          "duration": 30
+        },
+        "staff": 2,
+        "staff_details": {
+          "id": 2,
+          "first_name": "John",
+          "last_name": "Barber"
+        },
+        "date": "2023-04-15",
+        "start_time": "14:00:00",
+        "end_time": "14:30:00",
+        "status": "scheduled",
+        "notes": ""
+      }
+    ]
+  }
+  ```
+
+#### Create Appointment
+- **URL**: `/client/appointments/`
+- **Method**: POST
+- **Description**: Create a new appointment
+- **Authentication**: Required (Client)
+- **Request Body**:
+  ```json
+  {
+    "service": 1,
+    "staff": 2,
+    "date": "2023-04-20",
+    "start_time": "15:00:00",
+    "notes": "First time client"
+  }
+  ```
+- **Response**: 201 Created
+  ```json
+  {
+    "id": 2,
+    "service": 1,
+    "service_details": {
+      "id": 1,
+      "name": "Regular Haircut",
+      "price": "25.00",
+      "duration": 30
+    },
+    "staff": 2,
+    "staff_details": {
+      "id": 2,
+      "first_name": "John",
+      "last_name": "Barber"
+    },
+    "date": "2023-04-20",
+    "start_time": "15:00:00",
+    "end_time": "15:30:00",
+    "status": "scheduled",
+    "notes": "First time client"
+  }
+  ```
+
+#### Cancel Appointment
+- **URL**: `/client/appointments/{id}/cancel/`
+- **Method**: POST
+- **Description**: Cancel an appointment
+- **Authentication**: Required (Client)
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 2,
+    "service": 1,
+    "service_details": {
+      "id": 1,
+      "name": "Regular Haircut",
+      "price": "25.00",
+      "duration": 30
+    },
+    "staff": 2,
+    "staff_details": {
+      "id": 2,
+      "first_name": "John",
+      "last_name": "Barber"
+    },
+    "date": "2023-04-20",
+    "start_time": "15:00:00",
+    "end_time": "15:30:00",
+    "status": "cancelled",
+    "notes": "First time client"
+  }
+  ```
+
+### Staff Appointments
+
+#### List Staff Appointments
+- **URL**: `/staff/appointments/`
+- **Method**: GET
+- **Description**: Get all appointments for the authenticated staff
+- **Authentication**: Required (Staff)
+- **Query Parameters**:
+  - `page`: Page number for pagination
+  - `page_size`: Number of items per page
+  - `status`: Filter by status (scheduled, completed, cancelled, no_show)
+  - `date`: Filter by date (YYYY-MM-DD)
+- **Response**: 200 OK
+  ```json
+  {
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "id": 1,
+        "client": 1,
+        "client_details": {
+          "id": 1,
+          "first_name": "John",
+          "last_name": "Doe",
+          "email": "user@example.com",
+          "phone_number": "+1234567890"
+        },
+        "service": 1,
+        "service_details": {
+          "id": 1,
+          "name": "Regular Haircut",
+          "price": "25.00",
+          "duration": 30
+        },
+        "date": "2023-04-15",
+        "start_time": "14:00:00",
+        "end_time": "14:30:00",
+        "status": "scheduled",
+        "notes": ""
+      },
+      {
+        "id": 3,
+        "client": 4,
+        "client_details": {
+          "id": 4,
+          "first_name": "Jane",
+          "last_name": "Smith",
+          "email": "jane@example.com",
+          "phone_number": "+1234567893"
+        },
+        "service": 2,
+        "service_details": {
+          "id": 2,
+          "name": "Beard Trim",
+          "price": "15.00",
+          "duration": 20
+        },
+        "date": "2023-04-15",
+        "start_time": "16:00:00",
+        "end_time": "16:20:00",
+        "status": "scheduled",
+        "notes": ""
+      }
+    ]
+  }
+  ```
+
+#### Update Appointment Status
+- **URL**: `/staff/appointments/{id}/status/`
+- **Method**: PATCH
+- **Description**: Update appointment status
+- **Authentication**: Required (Staff)
+- **Request Body**:
+  ```json
+  {
+    "status": "completed",
+    "notes": "Client was satisfied with the service"
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 1,
+    "client": 1,
+    "client_details": {
+      "id": 1,
+      "first_name": "John",
+      "last_name": "Doe",
+      "email": "user@example.com",
+      "phone_number": "+1234567890"
+    },
+    "service": 1,
+    "service_details": {
+      "id": 1,
+      "name": "Regular Haircut",
+      "price": "25.00",
+      "duration": 30
+    },
+    "date": "2023-04-15",
+    "start_time": "14:00:00",
+    "end_time": "14:30:00",
+    "status": "completed",
+    "notes": "Client was satisfied with the service"
+  }
+  ```
+
+### Admin Appointments
+
+#### List All Appointments
+- **URL**: `/admin/appointments/`
+- **Method**: GET
+- **Description**: Get all appointments (admin access)
+- **Authentication**: Required (Admin)
+- **Query Parameters**:
+  - `page`: Page number for pagination
+  - `page_size`: Number of items per page
+  - `status`: Filter by status
+  - `date_from`: Filter by start date
+  - `date_to`: Filter by end date
+  - `client`: Filter by client ID
+  - `staff`: Filter by staff ID
+  - `service`: Filter by service ID
+- **Response**: 200 OK (similar to staff appointments but with all appointments)
+
+## Business Hours
+
+#### Get Business Hours
+- **URL**: `/business-hours/`
+- **Method**: GET
+- **Description**: Get business hours
+- **Authentication**: Optional
+- **Response**: 200 OK
+  ```json
+  [
+    {
+      "id": 1,
+      "day_of_week": 0,
+      "day_name": "Monday",
+      "is_open": true,
+      "opening_time": "09:00:00",
+      "closing_time": "18:00:00"
+    },
+    {
+      "id": 2,
+      "day_of_week": 1,
+      "day_name": "Tuesday",
+      "is_open": true,
+      "opening_time": "09:00:00",
+      "closing_time": "18:00:00"
+    },
+    {
+      "id": 3,
+      "day_of_week": 2,
+      "day_name": "Wednesday",
+      "is_open": true,
+      "opening_time": "09:00:00",
+      "closing_time": "18:00:00"
+    },
+    {
+      "id": 4,
+      "day_of_week": 3,
+      "day_name": "Thursday",
+      "is_open": true,
+      "opening_time": "09:00:00",
+      "closing_time": "18:00:00"
+    },
+    {
+      "id": 5,
+      "day_of_week": 4,
+      "day_name": "Friday",
+      "is_open": true,
+      "opening_time": "09:00:00",
+      "closing_time": "18:00:00"
+    },
+    {
+      "id": 6,
+      "day_of_week": 5,
+      "day_name": "Saturday",
+      "is_open": true,
+      "opening_time": "10:00:00",
+      "closing_time": "16:00:00"
+    },
+    {
+      "id": 7,
+      "day_of_week": 6,
+      "day_name": "Sunday",
+      "is_open": false,
+      "opening_time": null,
+      "closing_time": null
+    }
+  ]
+  ```
+
+#### Update Business Hours
+- **URL**: `/admin/business-hours/{id}/`
+- **Method**: PATCH
+- **Description**: Update business hours for a specific day
+- **Authentication**: Required (Admin)
+- **Request Body**:
+  ```json
+  {
+    "is_open": true,
+    "opening_time": "10:00:00",
+    "closing_time": "19:00:00"
+  }
+  ```
+- **Response**: 200 OK
+  ```json
+  {
+    "id": 1,
+    "day_of_week": 0,
+    "day_name": "Monday",
+    "is_open": true,
+    "opening_time": "10:00:00",
+    "closing_time": "19:00:00"
+  }
+  ```
+
+## Error Handling
+
+### Common Error Responses
+
+#### Authentication Error
+- **Status Code**: 401 Unauthorized
+- **Response Body**:
+  ```json
+  {
+    "detail": "Authentication credentials were not provided."
+  }
+  ```
+
+#### Permission Error
+- **Status Code**: 403 Forbidden
+- **Response Body**:
+  ```json
+  {
+    "detail": "You do not have permission to perform this action."
+  }
+  ```
+
+#### Not Found Error
+- **Status Code**: 404 Not Found
+- **Response Body**:
+  ```json
+  {
+    "detail": "Not found."
+  }
+  ```
+
+#### Validation Error
+- **Status Code**: 400 Bad Request
+- **Response Body**:
+  ```json
+  {
+    "field_name": [
+      "Error message"
+    ]
+  }
+  ```
+
+## Pagination
+
+All list endpoints support pagination with the following query parameters:
+- `page`: Page number (default: 1)
+- `page_size`: Number of items per page (default: 10, max: 100)
+
+Paginated responses include:
+- `count`: Total number of items
+- `next`: URL to the next page (null if no next page)
+- `previous`: URL to the previous page (null if no previous page)
+- `results`: Array of items for the current page
+
+## Rate Limiting
+
+The API implements rate limiting to prevent abuse:
+- Anonymous users: 100 requests per day
+- Authenticated users: 1000 requests per day
+
+When rate limit is exceeded, the API returns:
+- **Status Code**: 429 Too Many Requests
+- **Response Body**:
+  ```json
+  {
+    "detail": "Request was throttled. Expected available in X seconds."
+  }
+  ```
+
+## Versioning
+
+The API is versioned in the URL path (e.g., `/api/v1/`). When breaking changes are introduced, a new version will be released (e.g., `/api/v2/`).

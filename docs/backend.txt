@@ -1,0 +1,254 @@
+# BACKEND DOCUMENTATION
+
+## Technology Stack
+- **Framework**: Django 4.2.10 with Django REST Framework 3.14.0
+- **Database**: PostgreSQL 
+- **Authentication**: JWT (djangorestframework-simplejwt)
+- **API**: RESTful API
+- **Hosting**: Hostpinnacle
+
+## Project Structure
+```
+backend/
+├── barberian/                  # Main project directory
+│   ├── __init__.py
+│   ├── settings.py             # Project settings
+│   ├── urls.py                 # Main URL configuration
+│   ├── wsgi.py                 # WSGI configuration
+│   ├── asgi.py                 # ASGI configuration
+│   ├── admin/                  # Admin module
+│   ├── auth/                   # Authentication module
+│   ├── client/                 # Client module
+│   ├── common/                 # Shared components
+│   ├── notification/           # Notification module
+│   ├── staff/                  # Staff module
+│   ├── utils/                  # Utility functions
+│   └── administration/         # Administration module
+├── manage.py                   # Django management script
+├── requirements.txt            # Project dependencies
+├── .env                        # Environment variables
+├── .gitignore                  # Git ignore file
+└── passenger_wsgi.py           # Passenger WSGI configuration
+```
+
+## Core Modules
+
+### 1. Authentication Module (barberian.auth)
+Handles user authentication and authorization.
+
+**Key Components:**
+- JWT token generation and validation
+- User registration and login
+- Password reset functionality
+- Role-based access control
+
+**Models:**
+- Uses the custom User model from common module
+
+**Views:**
+- `LoginView`: Handles user login and token generation
+- `RegisterView`: Handles user registration
+- `RefreshTokenView`: Refreshes JWT tokens
+- `PasswordResetView`: Initiates password reset process
+
+### 2. Common Module (barberian.common)
+Contains shared models and utilities used across the application.
+
+**Key Models:**
+- `User`: Custom user model extending Django's AbstractUser
+- `Category`: Service categories
+- `Service`: Services offered by the barbershop
+- `BusinessHours`: Business operating hours
+
+**Utilities:**
+- Base serializers
+- Common validators
+- Shared mixins
+
+### 3. Client Module (barberian.client)
+Manages client-related functionality.
+
+**Key Models:**
+- `ClientProfile`: Extended client information
+
+**Views:**
+- `ClientProfileView`: CRUD operations for client profiles
+- `ClientAppointmentView`: Client appointment management
+- `ClientServiceView`: Service browsing for clients
+
+### 4. Staff Module (barberian.staff)
+Handles staff-related functionality.
+
+**Key Models:**
+- `StaffProfile`: Extended staff information
+- `StaffAvailability`: Staff availability schedule
+
+**Views:**
+- `StaffProfileView`: CRUD operations for staff profiles
+- `StaffAvailabilityView`: Staff availability management
+- `StaffAppointmentView`: Staff appointment management
+
+### 5. Admin Module (barberian.admin)
+Provides administrative functionality.
+
+**Views:**
+- `AdminDashboardView`: Admin dashboard data
+- `AdminStaffView`: Staff management
+- `AdminServiceView`: Service management
+- `AdminCategoryView`: Category management
+- `AdminAppointmentView`: Appointment management
+- `AdminClientView`: Client management
+- `AdminReportView`: Business reports and analytics
+
+### 6. Notification Module (barberian.notification)
+Handles notifications and communications.
+
+**Key Models:**
+- `Notification`: Notification records
+- `NotificationTemplate`: Templates for notifications
+
+**Services:**
+- Email notification service
+- SMS notification service (using Twilio)
+
+### 7. Administration Module (barberian.administration)
+Handles business administration functionality.
+
+**Key Models:**
+- `BusinessSettings`: General business settings
+- `PaymentSettings`: Payment configuration
+
+**Views:**
+- `BusinessSettingsView`: CRUD for business settings
+- `BusinessHoursView`: Business hours management
+
+## Database Schema
+
+### User Model
+```python
+class User(AbstractUser):
+    email = models.EmailField(unique=True)
+    phone_number = models.CharField(max_length=15, blank=True)
+    role = models.CharField(
+        max_length=10,
+        choices=[('admin', 'Admin'), ('staff', 'Staff'), ('client', 'Client')],
+        default='client'
+    )
+    is_active = models.BooleanField(default=True)
+    date_joined = models.DateTimeField(auto_now_add=True)
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+```
+
+### Category Model
+```python
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+### Service Model
+```python
+class Service(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    duration = models.IntegerField(help_text="Duration in minutes")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='services')
+    image = models.ImageField(upload_to='services/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+### Appointment Model
+```python
+class Appointment(models.Model):
+    client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client_appointments')
+    staff = models.ForeignKey(User, on_delete=models.CASCADE, related_name='staff_appointments')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE)
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('scheduled', 'Scheduled'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled'),
+            ('no_show', 'No Show')
+        ],
+        default='scheduled'
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+## Authentication Flow
+
+1. **Registration**:
+   - Client sends registration data to `/api/v1/auth/register/`
+   - Server validates data and creates a new user
+   - Server returns user data and authentication tokens
+
+2. **Login**:
+   - Client sends credentials to `/api/v1/auth/login/`
+   - Server validates credentials
+   - Server returns authentication tokens (access and refresh)
+
+3. **Token Refresh**:
+   - Client sends refresh token to `/api/v1/auth/token/refresh/`
+   - Server validates refresh token
+   - Server returns new access token
+
+4. **Protected Endpoints**:
+   - Client includes access token in Authorization header
+   - Server validates token and checks permissions
+   - Server processes the request if authorized
+
+## Deployment Process
+
+1. **Environment Setup**:
+   - Create `.env` file with required environment variables
+   - Configure database settings
+
+2. **Database Migration**:
+   - Run `python manage.py migrate` to set up database schema
+
+3. **Static Files**:
+   - Run `python manage.py collectstatic` to collect static files
+
+4. **WSGI Configuration**:
+   - Configure `passenger_wsgi.py` for Hostpinnacle
+
+5. **Server Configuration**:
+   - Set up `.htaccess` for Apache configuration
+   - Configure domain settings in Hostpinnacle
+
+## Testing
+
+### Unit Tests
+Run unit tests with:
+```bash
+python manage.py test
+```
+
+### API Testing
+Test API endpoints with Postman or curl.
+
+## Maintenance
+
+### Database Backups
+Regular backups of Neon PostgreSQL database.
+
+### Logging
+Logging configuration in settings.py for error tracking.
+
+### Monitoring
+Set up monitoring for application performance and errors.
